@@ -55,12 +55,12 @@ CCR 会读取 `.codex-plugin/plugin.json` 中的 `module`，并加载根目录�
 1. **Enable per-request routing**
    - 开启后，每个 Codex API request 都会调用一次 JEV。
 2. **Base URL**
-   - 填写 JEV 的 OpenAI-compatible API base URL。
-   - 如果完整接口是 `https://example/v1/chat/completions`，这里填写到 `/v1`，插件会追加 `/chat/completions`。
+   - 填写 TypeSafe JEV System One API URL，推荐填写 `https://api.typesafe.ai/v1/systemone`（也可填 `https://api.typesafe.ai`，插件会自动解析到 `/v1/systemone`）。
+   - 若使用自定义的 OpenAI 兼容代理，可填写以 `/chat/completions` 结尾的完整 URL。
 3. **API key**
-   - 填写 JEV API key。
+   - 填写 TypeSafe API key（可在 [TypeSafe Console Keys](https://console.typesafe.ai/keys) 获取）。
 4. **Model**
-   - 填写用于难度分类的 JEV model。
+   - 填写 JEV model 名称，推荐使用 `jev-latest`。
 5. **Timeout**
    - 默认 8000 ms。
 6. 配置四个档位模型：

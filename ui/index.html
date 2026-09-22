@@ -34,9 +34,10 @@
 
     <fieldset>
       <legend>JEV Configuration</legend>
-      <label>Base URL <input id="baseUrl" placeholder="https://api.openai.com/v1" /></label>
-      <label>API key <input id="apiKey" type="password" placeholder="sk-..." /></label>
-      <label>Model <input id="jevModel" placeholder="e.g. gpt-4o-mini" /></label>
+      <label>Base URL <input id="baseUrl" placeholder="https://api.typesafe.ai/v1/systemone" /></label>
+      <p class="hint">TypeSafe System One API URL (e.g. <code>https://api.typesafe.ai/v1/systemone</code>).</p>
+      <label>API key <input id="apiKey" type="password" placeholder="TypeSafe API Key" /></label>
+      <label>Model <input id="jevModel" placeholder="jev-latest" /></label>
       <label>Timeout (ms) <input id="timeoutMs" type="number" min="500" step="100" value="8000" /></label>
       <button id="test" class="secondary" type="button">Test connection</button>
     </fieldset>
@@ -165,7 +166,7 @@
           status("Testing JEV connection...", "info");
           const res = await api.testJev(getConfigFromForm().jev);
           if (!res.ok) throw new Error(res.error || "JEV test failed");
-          status(`JEV connection succeeded (classified tier: ${res.tier}).`, "success");
+          status(`JEV connection succeeded (classified tier: ${res.tier}${res.confidence != null ? `, confidence: ${Math.round(res.confidence * 100)}%` : ""}).`, "success");
         } catch (error) {
           status(error.message, "error");
         } finally {

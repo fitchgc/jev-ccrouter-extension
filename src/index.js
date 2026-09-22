@@ -237,7 +237,7 @@ export function createExtension({ jevClient, logger = console } = {}) {
                 timeoutMs: body.timeoutMs || 8000
               }
             );
-            sendResponse(res, 200, { ok: true, tier: testResult.tier }, helpers);
+            sendResponse(res, 200, { ok: true, tier: testResult.tier, confidence: testResult.confidence }, helpers);
           } catch (err) {
             sendResponse(res, 200, { ok: false, error: err.message }, helpers);
           }
