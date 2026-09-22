@@ -22,19 +22,25 @@ export class JevRouter {
       if (!allowedModels.includes(selectedModel)) {
         return this.fallback(originalModel, "selected model is no longer allowed", decision.tier);
       }
+      const logMsg = `[jev-router] Task classified as "${decision.tier}"${decision.confidence != null ? ` (confidence: ${(decision.confidence * 100).toFixed(0)}%)` : ""}. Routing "${originalModel}" -> "${selectedModel}"`;
+      (this.logger.info ?? this.logger.log)?.(logMsg);
       return {
         tier: decision.tier,
+        confidence: decision.confidence,
         selectedModel,
         originalModel,
         usedFallback: false
       };
     } catch (error) {
-      this.logger.warn?.(`[jev-router] ${error.message}`);
+      this.logger.warn?.(`[jev-router] JEV classification failed: ${error.message}`);
       return this.fallback(originalModel, error.message);
     }
   }
 
   fallback(originalModel, fallbackReason, tier) {
+    if (fallbackReason !== "disabled") {
+      this.logger.warn?.(`[jev-router] Falling back to original model "${originalModel}". Reason: ${fallbackReason}`);
+    }
     return {
       tier,
       selectedModel: originalModel,
