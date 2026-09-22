@@ -117,6 +117,20 @@ function serveHtml(req, res) {
   res.end(html);
 }
 
+function applyRouteDecision(request, decision, inputHeaders = {}) {
+  if (decision.usedFallback) return null;
+  const selectedModel = decision.selectedModel;
+  return {
+    routedModel: selectedModel,
+    body: patchModel(request, selectedModel),
+    headers: {
+      ...inputHeaders,
+      "x-ccr-routed-model": selectedModel,
+      "x-ccr-route-reason": `plugin:${CONFIG_KEY}:${decision.tier}`
+    }
+  };
+}
+
 export function createExtension({ jevClient, logger = console } = {}) {
   const client = jevClient ?? new JevClient({ logger });
   const router = new JevRouter({
@@ -277,10 +291,7 @@ export function createExtension({ jevClient, logger = console } = {}) {
               return null;
             }
 
-            return {
-              routedModel: decision.selectedModel,
-              body: patchModel(body, decision.selectedModel)
-            };
+            return applyRouteDecision(body, decision, input.headers);
           }
         });
       }

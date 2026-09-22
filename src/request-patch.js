@@ -1,6 +1,5 @@
 export function patchModel(body, model) {
   if (!body || typeof body !== "object" || !model) return body;
-  if (typeof body.model !== "string") return body;
   return { ...body, model };
 }
 

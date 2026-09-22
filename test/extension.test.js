@@ -114,3 +114,41 @@ test("extension registers gateway routes, app, and serves UI properly", async ()
   assert.equal(savedData.config.enabled, true);
   assert.equal(savedData.config.jev.model, "m1");
 });
+
+test("gateway transform returns both routedModel and patched body model", async () => {
+  let registeredTransform;
+  const context = {
+    permissions: ["gateway-request-transforms"],
+    config: {
+      profile: {
+        profiles: [
+          { agent: "codex", availableModels: ["model-a", "model-b"] }
+        ]
+      }
+    },
+    pluginConfig: () => ({
+      enabled: true,
+      jev: { baseUrl: "https://api.test/v1", apiKey: "key", model: "classifier" },
+      tiers: { simple: "model-a", normal: "model-b", complex: "model-b", extreme: "model-b" }
+    }),
+    registerGatewayRequestTransform(transform) {
+      registeredTransform = transform;
+    }
+  };
+
+  const extension = createExtension({
+    jevClient: { classify: async () => ({ tier: "normal" }) }
+  });
+  extension.register(context);
+
+  const result = await registeredTransform.transform({
+    headers: { "x-ccr-routed-model": "model-a" },
+    body: { model: "model-a", input: [{ role: "user", content: "hello" }] }
+  });
+
+  assert.equal(result.routedModel, "model-b");
+  assert.equal(result.body.model, "model-b");
+  assert.equal(result.headers["x-ccr-routed-model"], "model-b");
+  assert.equal(result.headers["x-ccr-route-reason"], "plugin:jev-ccrouter:normal");
+});
+
