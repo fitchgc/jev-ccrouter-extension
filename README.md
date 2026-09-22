@@ -1,81 +1,81 @@
 # JEV Smart Router for Claude Code Router
 
-这是一个 Claude Code Router（CCR）本地扩展，用 JEV 判断每个 Codex 请求的任务难度，并把请求路由到四个已配置的 Allowed model 之一：
+JEV Smart Router is a local Claude Code Router (CCR) extension that classifies each Codex request by task difficulty and routes it to one of four configured Allowed models:
 
-- `simple`：简单
-- `normal`：普通
-- `complex`：复杂
-- `extreme`：极难
+- `simple`: straightforward tasks
+- `normal`: routine coding tasks
+- `complex`: multi-file or architecturally difficult tasks
+- `extreme`: highly critical or system-wide tasks
 
-JEV 不可用、超时或返回无效结果时，插件会保留 Codex 本次请求的原始模型。
+If JEV is unavailable, times out, returns an invalid result, or produces a tier whose model is no longer allowed, the extension keeps the request's original model.
 
-## 是否需要打包？
+## Do I need to package the extension?
 
-**本地安装不需要打包。** 直接在 CCR 的 Extensions 页面选择本仓库目录即可。需要发送给其他人、上传制品或归档时，才生成 zip 包。扩展目录的根部必须包含 `.codex-plugin/plugin.json` 和它声明的入口模块。
+**No package is required for local installation.** In CCR, select this repository directory from the Extensions page. Create a zip archive only when sharing, uploading, or archiving the extension. The extension root must contain `.codex-plugin/plugin.json` and the entry module declared by that manifest.
 
-## 前置条件
+## Prerequisites
 
-1. 已安装并运行 CCR Desktop 3.x。
-2. CCR 中已启用 Codex profile。
-3. Codex profile 已配置至少四个可用模型，或允许多个档位复用同一个模型。
-4. 已有 JEV API endpoint、API key 和用于分类的 JEV model。
-5. Node.js 18 或更高版本，用于本地检查和测试。
+1. CCR Desktop 3.x is installed and running.
+2. A Codex profile is enabled in CCR.
+3. The Codex profile has at least four usable models, or allows multiple tiers to reuse the same model.
+4. You have a JEV API endpoint, API key, and classification model.
+5. Node.js 18 or later is available for local checks and tests.
 
-## 本地开发安装
+## Install for local development
 
-在本仓库根目录执行：
+From the repository root, run:
 
 ```sh
 npm test
 npm run check
 ```
 
-检查通过后：
+After both commands pass:
 
-1. 打开 CCR Desktop。
-2. 进入 **Extensions** 页面。
-3. 点击 **Add extension** 或 **添加扩展**。
-4. 选择本仓库目录，例如：
+1. Open CCR Desktop.
+2. Go to **Extensions**.
+3. Click **Add extension**.
+4. Select this repository directory, for example:
 
    ```text
    /Users/<your-name>/path/to/jev-ccrouter-extension
    ```
 
-5. 保存扩展配置。
-6. 打开 CCR 的 **Server** 页面并重启 Gateway。
+5. Save the extension configuration.
+6. Open CCR's **Server** page and restart the Gateway.
 
-CCR 会读取 `.codex-plugin/plugin.json` 中的 `module`，并加载根目录的 `index.cjs`。修改插件代码后，需要重启 Gateway 才会重新加载扩展。
+CCR reads the `module` field in `.codex-plugin/plugin.json` and loads the root-level `index.cjs`. Restart the Gateway after changing the extension so that CCR reloads the code.
 
-> 当前插件使用 `index.cjs` 作为 CCR 入口，入口再加载 `src/index.js`。不要直接选择 `src` 目录，也不要只复制 `ui` 目录。
+> The extension currently uses `index.cjs` as the CCR entry point, which then loads `src/index.js`. Select the repository root—not the `src` directory or only the `ui` directory.
 
-## 配置 JEV Router
+## Configure JEV Router
 
-安装并重启 Gateway 后，在 CCR 的扩展入口中打开 **JEV Smart Router**，配置：
+After installing the extension and restarting the Gateway, open **JEV Smart Router** from the CCR extension entry point and configure the following:
 
 1. **Enable per-request routing**
-   - 开启后，每个 Codex API request 都会调用一次 JEV。
+   - When enabled, JEV is called once for each Codex API request.
 2. **Base URL**
-   - 填写 TypeSafe JEV System One API URL，推荐填写 `https://api.typesafe.ai/v1/systemone`（也可填 `https://api.typesafe.ai`，插件会自动解析到 `/v1/systemone`）。
-   - 若使用自定义的 OpenAI 兼容代理，可填写以 `/chat/completions` 结尾的完整 URL。
+   - Enter the TypeSafe JEV System One API URL. The recommended value is `https://api.typesafe.ai/v1/systemone`. You may also enter `https://api.typesafe.ai`; the extension resolves it to `/v1/systemone`.
+   - For a custom OpenAI-compatible proxy, enter the complete URL ending in `/chat/completions`.
 3. **API key**
-   - 填写 TypeSafe API key（可在 [TypeSafe Console Keys](https://console.typesafe.ai/keys) 获取）。
+   - Enter a TypeSafe API key. Keys are available from [TypeSafe Console Keys](https://console.typesafe.ai/keys).
 4. **Model**
-   - 填写 JEV model 名称，推荐使用 `jev-latest`。
+   - Enter the JEV model name. `jev-latest` is recommended.
 5. **Timeout**
-   - 默认 8000 ms。
-6. 配置四个档位模型：
+   - The default is 8000 ms.
+6. Configure a model for each tier:
    - `Simple`
    - `Normal`
    - `Complex`
    - `Extreme`
 
-四个下拉框只应显示当前 Codex profile 的 Allowed model list。允许多个档位选择同一个模型。
+The four model selectors should contain only models from the current Codex profile's Allowed model list. Multiple tiers may use the same model.
 
-保存后点击 **Test connection**，确认 JEV 可访问，再开始使用 Codex。
+Save the configuration and click **Test connection** to verify that JEV is reachable before using Codex.
 
-## 推荐配置示例
+## Example configuration
 
-假设当前 Codex Allowed model list 为：
+Assume the current Codex Allowed model list is:
 
 ```text
 llmapi.site/gpt-5.6-sol
@@ -84,7 +84,7 @@ llmapi.site/gpt-6-astra
 llmapi.site/gpt-5.6-terra
 ```
 
-可以配置为：
+A possible configuration is:
 
 ```text
 Simple   -> llmapi.site/gpt-5.6-sol
@@ -93,42 +93,42 @@ Complex  -> llmapi.site/gpt-5.6-terra
 Extreme  -> llmapi.site/gpt-6-astra
 ```
 
-如果更重视成本，也可以把 `Complex` 和 `Extreme` 配置为同一个模型。
+If cost is more important than maximum capability, `Complex` and `Extreme` can point to the same model.
 
-## 运行行为
+## Request flow
 
-每个 Codex 请求的处理流程：
+For each Codex request, the extension:
 
-1. 读取当前请求的原始模型。
-2. 提取有限的任务摘要。
-3. 将摘要发送给 JEV。
-4. 要求 JEV 返回以下四个值之一：
+1. Reads the request's original model.
+2. Extracts a bounded task summary.
+3. Sends the summary to JEV.
+4. Requires JEV to return exactly one of the following tiers:
 
    ```json
    {"tier":"simple"}
    ```
 
-5. 根据 tier 选择对应模型。
-6. 只修改请求中的 `model` 字段。
-7. 继续交给 CCR 处理 provider、工具调用和流式响应。
+5. Selects the model configured for that tier.
+6. Modifies only the request's `model` field.
+7. Passes the request back to CCR, which continues to handle providers, tool calls, and streaming responses.
 
-发送给 JEV 的摘要包括最近用户意图、消息数量、工具名称、图片输入标记和估算输入规模；不会发送完整工具输出、二进制输入或 API key。
+The summary sent to JEV can include the latest user intent, message count, tool names, image-input indicators, and an estimated input size. It does not include complete tool output, binary input, or API keys.
 
-## 打包发布
+## Package for distribution
 
-### 生成 zip
+### Create a zip archive
 
 ```sh
 npm run pack
 ```
 
-输出文件：
+The output is:
 
 ```text
 dist/jev-ccrouter-extension-0.1.0.zip
 ```
 
-也可以手动执行：
+You can also create the archive manually:
 
 ```sh
 zip -qr dist/jev-ccrouter-extension-0.1.0.zip . \
@@ -137,7 +137,7 @@ zip -qr dist/jev-ccrouter-extension-0.1.0.zip . \
   -x 'node_modules/*'
 ```
 
-分享 zip 前确认压缩包根目录直接包含：
+Before sharing the archive, verify that its root contains:
 
 ```text
 .codex-plugin/plugin.json
@@ -147,39 +147,39 @@ ui/
 package.json
 ```
 
-不要把整个父目录再套一层，否则 CCR 选择目录或解压后可能找不到 manifest。
+Do not wrap the extension in an additional parent directory. CCR may be unable to find the manifest when selecting or extracting the archive.
 
-## 开发与调试
+## Development and troubleshooting
 
 ```sh
 npm run check
 npm test
 ```
 
-排查加载问题时重点检查：
+When diagnosing loading or routing issues, check the following:
 
-- `module` 是否指向本地 `index.cjs`。
-- 是否授予 `trusted-code`、`apps`、`gateway-routes`、`http-backends` 和 `proxy-routes` 权限。
-- 是否在保存扩展后重启 Gateway。
-- JEV endpoint 是否可以从运行 CCR 的机器访问。
-- JEV API key 是否有效。
-- 四个模型是否仍存在于当前 Codex profile 的 Allowed model list。
+- `module` points to the local `index.cjs`.
+- The extension has `trusted-code`, `apps`, `gateway-routes`, `gateway-request-transforms`, `http-backends`, and `proxy-routes` permissions.
+- The Gateway was restarted after saving the extension.
+- The JEV endpoint is reachable from the machine running CCR.
+- The JEV API key is valid.
+- All four configured models still exist in the current Codex profile's Allowed model list.
 
-## 已知限制
+## Known limitations
 
-- 当前工作区没有 CCR 独立 SDK 类型包，因此核心路由逻辑和 JEV 客户端可独立测试，但仍建议在目标 CCR 版本上完成一次真实 Gateway/代理验证。
-- 本插件只针对 CCR Codex profile；不会拦截机器上其他应用发出的 OpenAI API 请求。
-- 当前实现不自行重放 SSE，而是尝试通过 CCR 路由/代理适配层继续处理原始请求。
+- This workspace does not include a standalone CCR SDK type package. The core router and JEV client can be tested independently, but a real Gateway/proxy verification on the target CCR version is still recommended.
+- The extension targets the CCR Codex profile only. It does not intercept OpenAI API requests made by other applications on the machine.
+- The extension does not replay SSE itself; it relies on CCR's routing/proxy adapter layer to continue processing the original request.
 
-## 隐私与故障回退
+## Privacy and fallback behavior
 
-插件只向 JEV 发送有上限的任务摘要，不发送完整工具输出、二进制输入或凭据。
+The extension sends only a bounded task summary to JEV. It does not send complete tool output, binary input, or credentials.
 
-以下情况会回退到 Codex 原始模型：
+The extension falls back to the original Codex model when:
 
-- JEV 超时。
-- JEV HTTP 错误。
-- JEV 网络失败。
-- JEV 返回无效 JSON。
-- JEV 返回未知 tier。
-- tier 对应模型不在 Allowed model list。
+- JEV times out.
+- JEV returns an HTTP error.
+- The JEV request fails at the network layer.
+- JEV returns invalid JSON.
+- JEV returns an unknown tier.
+- The model configured for the selected tier is not in the Allowed model list.
