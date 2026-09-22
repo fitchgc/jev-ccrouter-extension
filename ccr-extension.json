@@ -1,0 +1,17 @@
+{
+  "name": "jev-ccrouter-extension",
+  "displayName": "JEV Smart Router",
+  "version": "0.1.0",
+  "description": "Routes each CCR Codex request to one of four configured Allowed models using JEV.",
+  "main": "./src/index.js",
+  "ui": {
+    "entry": "./ui/index.html",
+    "route": "/extensions/jev-smart-router"
+  },
+  "capabilities": [
+    "codex.request.route",
+    "settings.read",
+    "settings.write",
+    "models.read"
+  ]
+}

@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>JEV Smart Router</title>
+    <style>
+      :root { color-scheme: light dark; font: 14px system-ui, sans-serif; }
+      body { max-width: 760px; margin: 0 auto; padding: 24px; }
+      fieldset { border: 1px solid #8885; border-radius: 8px; margin: 16px 0; padding: 16px; }
+      label { display: grid; gap: 6px; margin: 10px 0; }
+      input, select, button { padding: 8px; border-radius: 6px; border: 1px solid #8888; }
+      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      .error { color: #d55; white-space: pre-wrap; }
+      .hint { opacity: .72; }
+    </style>
+  </head>
+  <body>
+    <h1>JEV Smart Router</h1>
+    <p class="hint">Classify every CCR Codex request with JEV and route it to one of four Allowed models.</p>
+    <label><span><input id="enabled" type="checkbox" /> Enable per-request routing</span></label>
+    <fieldset>
+      <legend>JEV</legend>
+      <label>Base URL <input id="baseUrl" placeholder="OpenAI-compatible JEV endpoint" /></label>
+      <label>API key <input id="apiKey" type="password" /></label>
+      <label>Model <input id="jevModel" /></label>
+      <label>Timeout (ms) <input id="timeoutMs" type="number" min="500" step="100" value="8000" /></label>
+      <button id="test">Test connection</button>
+    </fieldset>
+    <fieldset>
+      <legend>Allowed model tiers</legend>
+      <div id="tiers" class="grid"></div>
+      <p class="hint">All four selectors use the current Codex profile Allowed model list. Reusing a model is allowed.</p>
+    </fieldset>
+    <button id="save">Save</button>
+    <p id="status" role="status"></p>
+    <script type="module">
+      const api = window.ccr?.extension ?? window.ccrExtension;
+      const $ = (id) => document.getElementById(id);
+      const tiers = ["simple", "normal", "complex", "extreme"];
+      const labels = { simple: "Simple", normal: "Normal", complex: "Complex", extreme: "Extreme" };
+      let models = [];
+      function status(text, error = false) {
+        $("status").textContent = text;
+        $("status").className = error ? "error" : "";
+      }
+      async function load() {
+        const data = await api.getConfig("jev-ccrouter");
+        models = await api.getCodexAllowedModels();
+        $("enabled").checked = !!data.enabled;
+        $("baseUrl").value = data.jev?.baseUrl ?? "";
+        $("apiKey").value = data.jev?.apiKey ?? "";
+        $("jevModel").value = data.jev?.model ?? "";
+        $("timeoutMs").value = data.jev?.timeoutMs ?? 8000;
+        $("tiers").replaceChildren(...tiers.map((tier) => {
+          const label = document.createElement("label");
+          label.textContent = labels[tier];
+          const select = document.createElement("select");
+          select.id = `tier-${tier}`;
+          for (const model of models) {
+            const option = new Option(model, model);
+            select.append(option);
+          }
+          select.value = data.tiers?.[tier] ?? "";
+          label.append(select);
+          return label;
+        }));
+      }
+      function config() {
+        return {
+          enabled: $("enabled").checked,
+          jev: { baseUrl: $("baseUrl").value.trim(), apiKey: $("apiKey").value, model: $("jevModel").value.trim(), timeoutMs: Number($("timeoutMs").value) },
+          tiers: Object.fromEntries(tiers.map((tier) => [tier, $(`tier-${tier}`).value])),
+          fallback: { mode: "original-model" },
+          routing: { summarizeOnly: true, perRequest: true }
+        };
+      }
+      $("save").onclick = async () => {
+        try { await api.saveConfig("jev-ccrouter", config()); status("Saved."); }
+        catch (error) { status(error.message, true); }
+      };
+      $("test").onclick = async () => {
+        try { await api.testJev(config().jev); status("JEV connection succeeded."); }
+        catch (error) { status(error.message, true); }
+      };
+      load().catch((error) => status(error.message, true));
+    </script>
+  </body>
+</html>

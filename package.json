@@ -1,0 +1,12 @@
+{
+  "name": "jev-ccrouter-extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "JEV difficulty-based model router extension for Claude Code Router",
+  "scripts": {
+    "test": "node --test",
+    "check": "node --check index.cjs && node --check src/index.js && node --check src/router.js && node --check src/summary.js && node --check src/jev-client.js && node --check src/request-patch.js",
+    "pack": "mkdir -p dist && zip -qr dist/jev-ccrouter-extension-0.1.0.zip . -x 'dist/*' -x '.git/*' -x 'node_modules/*'"
+  }
+}
