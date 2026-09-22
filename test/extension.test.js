@@ -152,3 +152,29 @@ test("gateway transform returns both routedModel and patched body model", async 
   assert.equal(result.headers["x-ccr-route-reason"], "plugin:jev-ccrouter:normal");
 });
 
+test("config UI reads the latest runtime Allowed model list without restart", async () => {
+  const routes = [];
+  let currentModels = ["model-a"];
+  const context = {
+    config: { profile: { profiles: [{ agent: "codex", availableModels: ["stale-model"] }] } },
+    getCurrentConfig: async () => ({
+      profile: { profiles: [{ agent: "codex", availableModels: currentModels }] }
+    }),
+    registerGatewayRoute(route) {
+      routes.push(route);
+    }
+  };
+
+  createExtension().register(context);
+  const configRoute = routes.find((route) => route.path === "/extensions/jev-smart-router/api/config");
+
+  const firstResponse = createMockResponse();
+  await configRoute.handler(createMockRequest(), firstResponse);
+  assert.deepEqual(JSON.parse(firstResponse.body).allowedModels, ["model-a"]);
+
+  currentModels = ["model-a", "new-model"];
+  const secondResponse = createMockResponse();
+  await configRoute.handler(createMockRequest(), secondResponse);
+  assert.deepEqual(JSON.parse(secondResponse.body).allowedModels, ["model-a", "new-model"]);
+  assert.match(secondResponse.headers["Cache-Control"], /no-store/);
+});

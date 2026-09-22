@@ -36,8 +36,9 @@ function saveStoredConfig(pluginDataDir, config) {
   }
 }
 
-function getAllowedModels(context) {
-  const profile = context?.config?.profile;
+function getAllowedModels(configOrContext) {
+  const config = configOrContext?.config ?? configOrContext;
+  const profile = config?.profile;
   const profiles = profile?.profiles ?? [];
   const codex = profiles.find((p) => p.agent === "codex" || p.id === "codex")
     ?? profile?.codex
@@ -47,8 +48,8 @@ function getAllowedModels(context) {
     return models;
   }
   const providerModels = [];
-  if (context?.config?.providers) {
-    for (const p of Object.values(context.config.providers)) {
+  if (config?.providers) {
+    for (const p of Object.values(config.providers)) {
       if (Array.isArray(p?.models)) {
         for (const m of p.models) {
           const id = typeof m === "string" ? m : m?.id;
@@ -58,6 +59,22 @@ function getAllowedModels(context) {
     }
   }
   return providerModels;
+}
+
+async function getLatestContextConfig(context) {
+  // CCR versions expose the live configuration under different optional getters.
+  // Prefer one when available so changing Allowed models does not require a
+  // Gateway restart just to refresh this UI.
+  for (const name of ["getConfig", "getCurrentConfig", "getRuntimeConfig"]) {
+    if (typeof context?.[name] !== "function") continue;
+    try {
+      const config = await context[name]();
+      if (config && typeof config === "object") return config;
+    } catch {
+      // Fall back to the config captured at registration time.
+    }
+  }
+  return context;
 }
 
 async function readRequestBody(req, helpers) {
@@ -92,7 +109,8 @@ function sendResponse(res, statusCode, data, helpers) {
   res.writeHead(statusCode, {
     "Content-Type": "application/json; charset=utf-8",
     "Content-Length": Buffer.byteLength(payload),
-    "Access-Control-Allow-Origin": "*"
+    "Access-Control-Allow-Origin": "*",
+    "Cache-Control": "no-store, no-cache, must-revalidate"
   });
   res.end(payload);
 }
@@ -215,7 +233,8 @@ export function createExtension({ jevClient, logger = console } = {}) {
           }
 
           // GET
-          const allowedModels = getAllowedModels(context);
+          const latestContext = await getLatestContextConfig(context);
+          const allowedModels = getAllowedModels(latestContext);
           sendResponse(res, 200, {
             ok: true,
             config: activeConfig,
@@ -280,7 +299,8 @@ export function createExtension({ jevClient, logger = console } = {}) {
             if (!body || typeof body !== "object") return null;
             if (!body.model && !input.routedModel) return null;
 
-            const allowedModels = getAllowedModels(context);
+            const latestContext = await getLatestContextConfig(context);
+            const allowedModels = getAllowedModels(latestContext);
             const decision = await router.route({
               request: body,
               config: activeConfig,

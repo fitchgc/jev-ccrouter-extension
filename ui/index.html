@@ -67,7 +67,9 @@
 
       const api = {
         async getConfig() {
-          const res = await fetch("/extensions/jev-smart-router/api/config");
+          const res = await fetch(`/extensions/jev-smart-router/api/config?refresh=${Date.now()}`, {
+            cache: "no-store"
+          });
           if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
           return await res.json();
         },
