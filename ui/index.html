@@ -5,85 +5,175 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>JEV Smart Router</title>
     <style>
-      :root { color-scheme: light dark; font: 14px system-ui, sans-serif; }
+      :root { color-scheme: light dark; font: 14px system-ui, -apple-system, sans-serif; }
       body { max-width: 760px; margin: 0 auto; padding: 24px; }
       fieldset { border: 1px solid #8885; border-radius: 8px; margin: 16px 0; padding: 16px; }
       label { display: grid; gap: 6px; margin: 10px 0; }
-      input, select, button { padding: 8px; border-radius: 6px; border: 1px solid #8888; }
+      input, select, button { padding: 8px 12px; border-radius: 6px; border: 1px solid #8888; font-size: 14px; }
+      input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; }
+      .checkbox-label { display: flex; align-items: center; gap: 8px; font-weight: 500; cursor: pointer; }
+      button { cursor: pointer; background: #2563eb; color: #fff; border: none; font-weight: 500; transition: opacity 0.2s; }
+      button:hover { opacity: 0.9; }
+      button:disabled { opacity: 0.5; cursor: not-allowed; }
+      button.secondary { background: #4b5563; }
       .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-      .error { color: #d55; white-space: pre-wrap; }
-      .hint { opacity: .72; }
+      .error { color: #ef4444; font-weight: 500; white-space: pre-wrap; margin-top: 8px; }
+      .success { color: #10b981; font-weight: 500; margin-top: 8px; }
+      .hint { opacity: .75; font-size: 13px; margin-top: 4px; }
+      .actions { display: flex; gap: 12px; align-items: center; margin-top: 16px; }
     </style>
   </head>
   <body>
     <h1>JEV Smart Router</h1>
     <p class="hint">Classify every CCR Codex request with JEV and route it to one of four Allowed models.</p>
-    <label><span><input id="enabled" type="checkbox" /> Enable per-request routing</span></label>
+
+    <label class="checkbox-label">
+      <input id="enabled" type="checkbox" />
+      <span>Enable per-request routing</span>
+    </label>
+
     <fieldset>
-      <legend>JEV</legend>
-      <label>Base URL <input id="baseUrl" placeholder="OpenAI-compatible JEV endpoint" /></label>
-      <label>API key <input id="apiKey" type="password" /></label>
-      <label>Model <input id="jevModel" /></label>
+      <legend>JEV Configuration</legend>
+      <label>Base URL <input id="baseUrl" placeholder="https://api.openai.com/v1" /></label>
+      <label>API key <input id="apiKey" type="password" placeholder="sk-..." /></label>
+      <label>Model <input id="jevModel" placeholder="e.g. gpt-4o-mini" /></label>
       <label>Timeout (ms) <input id="timeoutMs" type="number" min="500" step="100" value="8000" /></label>
-      <button id="test">Test connection</button>
+      <button id="test" class="secondary" type="button">Test connection</button>
     </fieldset>
+
     <fieldset>
       <legend>Allowed model tiers</legend>
       <div id="tiers" class="grid"></div>
       <p class="hint">All four selectors use the current Codex profile Allowed model list. Reusing a model is allowed.</p>
     </fieldset>
-    <button id="save">Save</button>
-    <p id="status" role="status"></p>
+
+    <div class="actions">
+      <button id="save" type="button">Save Configuration</button>
+      <span id="status" role="status"></span>
+    </div>
+
     <script type="module">
-      const api = window.ccr?.extension ?? window.ccrExtension;
       const $ = (id) => document.getElementById(id);
       const tiers = ["simple", "normal", "complex", "extreme"];
       const labels = { simple: "Simple", normal: "Normal", complex: "Complex", extreme: "Extreme" };
       let models = [];
-      function status(text, error = false) {
-        $("status").textContent = text;
-        $("status").className = error ? "error" : "";
+
+      function status(text, type = "info") {
+        const el = $("status");
+        el.textContent = text;
+        el.className = type === "error" ? "error" : type === "success" ? "success" : "hint";
       }
+
+      const api = {
+        async getConfig() {
+          const res = await fetch("/extensions/jev-smart-router/api/config");
+          if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+          return await res.json();
+        },
+        async saveConfig(cfg) {
+          const res = await fetch("/extensions/jev-smart-router/api/config", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(cfg)
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+          return await res.json();
+        },
+        async testJev(jevCfg) {
+          const res = await fetch("/extensions/jev-smart-router/api/test", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(jevCfg)
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+          return await res.json();
+        }
+      };
+
       async function load() {
-        const data = await api.getConfig("jev-ccrouter");
-        models = await api.getCodexAllowedModels();
-        $("enabled").checked = !!data.enabled;
-        $("baseUrl").value = data.jev?.baseUrl ?? "";
-        $("apiKey").value = data.jev?.apiKey ?? "";
-        $("jevModel").value = data.jev?.model ?? "";
-        $("timeoutMs").value = data.jev?.timeoutMs ?? 8000;
-        $("tiers").replaceChildren(...tiers.map((tier) => {
-          const label = document.createElement("label");
-          label.textContent = labels[tier];
-          const select = document.createElement("select");
-          select.id = `tier-${tier}`;
-          for (const model of models) {
-            const option = new Option(model, model);
-            select.append(option);
-          }
-          select.value = data.tiers?.[tier] ?? "";
-          label.append(select);
-          return label;
-        }));
+        status("Loading configuration...");
+        try {
+          const data = await api.getConfig();
+          const cfg = data.config ?? {};
+          models = data.allowedModels ?? [];
+          $("enabled").checked = !!cfg.enabled;
+          $("baseUrl").value = cfg.jev?.baseUrl ?? "";
+          $("apiKey").value = cfg.jev?.apiKey ?? "";
+          $("jevModel").value = cfg.jev?.model ?? "";
+          $("timeoutMs").value = cfg.jev?.timeoutMs ?? 8000;
+
+          $("tiers").replaceChildren(...tiers.map((tier) => {
+            const label = document.createElement("label");
+            label.textContent = labels[tier];
+            const select = document.createElement("select");
+            select.id = `tier-${tier}`;
+
+            const currentVal = cfg.tiers?.[tier] || "";
+            const options = new Set(models);
+            if (currentVal) options.add(currentVal);
+
+            if (options.size === 0) {
+              select.append(new Option("-- No models found in Codex profile --", ""));
+            } else {
+              select.append(new Option("-- Select model --", ""));
+              for (const model of options) {
+                select.append(new Option(model, model));
+              }
+            }
+            select.value = currentVal;
+            label.append(select);
+            return label;
+          }));
+          status("");
+        } catch (err) {
+          status("Failed to load: " + err.message, "error");
+        }
       }
-      function config() {
+
+      function getConfigFromForm() {
         return {
           enabled: $("enabled").checked,
-          jev: { baseUrl: $("baseUrl").value.trim(), apiKey: $("apiKey").value, model: $("jevModel").value.trim(), timeoutMs: Number($("timeoutMs").value) },
-          tiers: Object.fromEntries(tiers.map((tier) => [tier, $(`tier-${tier}`).value])),
+          jev: {
+            baseUrl: $("baseUrl").value.trim(),
+            apiKey: $("apiKey").value,
+            model: $("jevModel").value.trim(),
+            timeoutMs: Number($("timeoutMs").value) || 8000
+          },
+          tiers: Object.fromEntries(tiers.map((tier) => [tier, $(`tier-${tier}`)?.value || ""])),
           fallback: { mode: "original-model" },
           routing: { summarizeOnly: true, perRequest: true }
         };
       }
+
       $("save").onclick = async () => {
-        try { await api.saveConfig("jev-ccrouter", config()); status("Saved."); }
-        catch (error) { status(error.message, true); }
+        try {
+          $("save").disabled = true;
+          status("Saving...", "info");
+          const res = await api.saveConfig(getConfigFromForm());
+          if (!res.ok) throw new Error(res.error || "Save failed");
+          status("Saved successfully.", "success");
+        } catch (error) {
+          status(error.message, "error");
+        } finally {
+          $("save").disabled = false;
+        }
       };
+
       $("test").onclick = async () => {
-        try { await api.testJev(config().jev); status("JEV connection succeeded."); }
-        catch (error) { status(error.message, true); }
+        try {
+          $("test").disabled = true;
+          status("Testing JEV connection...", "info");
+          const res = await api.testJev(getConfigFromForm().jev);
+          if (!res.ok) throw new Error(res.error || "JEV test failed");
+          status(`JEV connection succeeded (classified tier: ${res.tier}).`, "success");
+        } catch (error) {
+          status(error.message, "error");
+        } finally {
+          $("test").disabled = false;
+        }
       };
-      load().catch((error) => status(error.message, true));
+
+      load();
     </script>
   </body>
 </html>

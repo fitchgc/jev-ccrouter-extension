@@ -1,17 +1,29 @@
 {
-  "name": "jev-ccrouter-extension",
-  "displayName": "JEV Smart Router",
+  "id": "jev-ccrouter-extension",
+  "name": "JEV Smart Router",
   "version": "0.1.0",
   "description": "Routes each CCR Codex request to one of four configured Allowed models using JEV.",
-  "main": "./src/index.js",
-  "ui": {
-    "entry": "./ui/index.html",
-    "route": "/extensions/jev-smart-router"
+  "module": "index.cjs",
+  "surfaces": {
+    "apps": true,
+    "gateway": true,
+    "provider": false
   },
-  "capabilities": [
-    "codex.request.route",
-    "settings.read",
-    "settings.write",
-    "models.read"
+  "permissions": [
+    "trusted-code",
+    "apps",
+    "gateway-routes",
+    "gateway-request-transforms",
+    "http-backends",
+    "proxy-routes"
+  ],
+  "apps": [
+    {
+      "id": "jev-smart-router",
+      "name": "JEV Smart Router",
+      "description": "Classify Codex requests with JEV and route to Allowed models",
+      "icon": "shuffle",
+      "url": "http://127.0.0.1:3456/extensions/jev-smart-router"
+    }
   ]
 }
