@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { JevRouter } from "../src/router.js";
 import { summarizeRequest } from "../src/summary.js";
-import { validateConfig } from "../src/config.js";
+import { mergeConfig, validateConfig } from "../src/config.js";
 import { patchModel, parseJsonBody } from "../src/request-patch.js";
 
 const models = ["cheap", "balanced", "strong"];
@@ -32,6 +32,17 @@ test("rejects tier models outside Allowed model list", () => {
   assert.equal(result.valid, false);
 });
 
+test("supports multiple API keys and preserves the legacy single-key config", () => {
+  const merged = mergeConfig({
+    jev: { apiKeys: [" key-a ", "key-b", "key-a", ""] }
+  });
+  assert.deepEqual(merged.jev.apiKeys, ["key-a", "key-b"]);
+  assert.equal(merged.jev.apiKey, "key-a");
+
+  const legacy = mergeConfig({ jev: { apiKey: "legacy-key" } });
+  assert.deepEqual(legacy.jev.apiKeys, ["legacy-key"]);
+});
+
 test("summary excludes raw tool output and captures capabilities", () => {
   const summary = summarizeRequest({
     model: "original",
@@ -46,10 +57,22 @@ test("summary excludes raw tool output and captures capabilities", () => {
 });
 
 test("patches only the model field and preserves the request", () => {
-  const request = { model: "old", stream: true, input: [{ role: "user", content: "hi" }] };
+  const request = {
+    model: "old",
+    stream: true,
+    input: [{
+      role: "assistant",
+      content: [{
+        type: "function_call",
+        name: "default_api:exec_command",
+        thought_signature: "gemini-signature"
+      }]
+    }]
+  };
   const patched = patchModel(request, "new");
   assert.equal(patched.model, "new");
   assert.equal(patched.stream, true);
-  assert.deepEqual(request.input, patched.input);
+  assert.deepEqual(patched.input, request.input);
+  assert.equal(patched.input[0].content[0].thought_signature, "gemini-signature");
   assert.equal(parseJsonBody(Buffer.from(JSON.stringify(patched))).model, "new");
 });

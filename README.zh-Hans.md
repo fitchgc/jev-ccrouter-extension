@@ -57,8 +57,9 @@ CCR 会读取 `.codex-plugin/plugin.json` 中的 `module`，并加载根目录�
 2. **Base URL**
    - 填写 TypeSafe JEV System One API URL，推荐填写 `https://api.typesafe.ai/v1/systemone`（也可填 `https://api.typesafe.ai`，插件会自动解析到 `/v1/systemone`）。
    - 若使用自定义的 OpenAI 兼容代理，可填写以 `/chat/completions` 结尾的完整 URL。
-3. **API key**
-   - 填写 TypeSafe API key（可在 [TypeSafe Console Keys](https://console.typesafe.ai/keys) 获取）。
+3. **API keys**
+   - 可添加多个 TypeSafe API key（可在 [TypeSafe Console Keys](https://console.typesafe.ai/keys) 获取）。
+   - 每次 JEV 分类请求会随机选择一个 key；可以随时删除不再使用的 key。
 4. **Model**
    - 填写 JEV model 名称，推荐使用 `jev-latest`。
 5. **Timeout**
@@ -94,6 +95,14 @@ Extreme  -> llmapi.site/gpt-6-astra
 ```
 
 如果更重视成本，也可以把 `Complex` 和 `Extreme` 配置为同一个模型。
+
+## Gemini 工具调用提示
+
+扩展在路由请求时只修改顶层 `model` 字段，并保留请求中的其它字段，包括 Gemini
+工具调用的 `thought_signature`。Gemini 要求无状态多轮请求原样带回之前响应中的思考块和签名；
+如果上游代理或客户端在路由器之前已经删除了签名，Gemini 仍可能返回
+`Function call is missing a thought_signature`。此时应检查上游的 Gemini/OpenAI 兼容转换，
+不要手动生成或修改签名。
 
 ## 运行行为
 

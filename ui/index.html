@@ -21,6 +21,10 @@
       .success { color: #10b981; font-weight: 500; margin-top: 8px; }
       .hint { opacity: .75; font-size: 13px; margin-top: 4px; }
       .actions { display: flex; gap: 12px; align-items: center; margin-top: 16px; }
+      .key-row { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
+      .key-row input { flex: 1; }
+      .key-row button { background: #6b7280; }
+      #addApiKey { margin-top: 4px; }
     </style>
   </head>
   <body>
@@ -36,7 +40,10 @@
       <legend>JEV Configuration</legend>
       <label>Base URL <input id="baseUrl" placeholder="https://api.typesafe.ai/v1/systemone" /></label>
       <p class="hint">TypeSafe System One API URL (e.g. <code>https://api.typesafe.ai/v1/systemone</code>).</p>
-      <label>API key <input id="apiKey" type="password" placeholder="TypeSafe API Key" /></label>
+      <label>API keys</label>
+      <div id="apiKeys"></div>
+      <button id="addApiKey" class="secondary" type="button">Add API key</button>
+      <p class="hint">A random key is selected for each JEV classification request.</p>
       <label>Model <input id="jevModel" placeholder="jev-latest" /></label>
       <label>Timeout (ms) <input id="timeoutMs" type="number" min="500" step="100" value="8000" /></label>
       <button id="test" class="secondary" type="button">Test connection</button>
@@ -58,11 +65,37 @@
       const tiers = ["simple", "normal", "complex", "extreme"];
       const labels = { simple: "Simple", normal: "Normal", complex: "Complex", extreme: "Extreme" };
       let models = [];
+      let apiKeys = [];
 
       function status(text, type = "info") {
         const el = $("status");
         el.textContent = text;
         el.className = type === "error" ? "error" : type === "success" ? "success" : "hint";
+      }
+
+      function renderApiKeys() {
+        const container = $("apiKeys");
+        container.replaceChildren(...apiKeys.map((key, index) => {
+          const row = document.createElement("div");
+          row.className = "key-row";
+          const input = document.createElement("input");
+          input.type = "password";
+          input.placeholder = "TypeSafe API Key";
+          input.value = key;
+          input.dataset.index = String(index);
+          input.addEventListener("input", () => {
+            apiKeys[index] = input.value;
+          });
+          const remove = document.createElement("button");
+          remove.type = "button";
+          remove.textContent = "Remove";
+          remove.addEventListener("click", () => {
+            apiKeys.splice(index, 1);
+            renderApiKeys();
+          });
+          row.append(input, remove);
+          return row;
+        }));
       }
 
       const api = {
@@ -101,7 +134,10 @@
           models = data.allowedModels ?? [];
           $("enabled").checked = !!cfg.enabled;
           $("baseUrl").value = cfg.jev?.baseUrl ?? "";
-          $("apiKey").value = cfg.jev?.apiKey ?? "";
+          apiKeys = Array.isArray(cfg.jev?.apiKeys) && cfg.jev.apiKeys.length > 0
+            ? [...cfg.jev.apiKeys]
+            : (cfg.jev?.apiKey ? [cfg.jev.apiKey] : [""]);
+          renderApiKeys();
           $("jevModel").value = cfg.jev?.model ?? "";
           $("timeoutMs").value = cfg.jev?.timeoutMs ?? 8000;
 
@@ -138,7 +174,7 @@
           enabled: $("enabled").checked,
           jev: {
             baseUrl: $("baseUrl").value.trim(),
-            apiKey: $("apiKey").value,
+            apiKeys: apiKeys.map((key) => key.trim()).filter(Boolean),
             model: $("jevModel").value.trim(),
             timeoutMs: Number($("timeoutMs").value) || 8000
           },
@@ -160,6 +196,13 @@
         } finally {
           $("save").disabled = false;
         }
+      };
+
+      $("addApiKey").onclick = () => {
+        apiKeys.push("");
+        renderApiKeys();
+        const inputs = $("apiKeys").querySelectorAll("input");
+        inputs[inputs.length - 1]?.focus();
       };
 
       $("test").onclick = async () => {

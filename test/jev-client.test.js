@@ -42,6 +42,30 @@ test("JEV client sends a System One choice classification request", async () => 
   assert.equal(captured.body.state.userIntent, "fix bug");
 });
 
+test("JEV client randomly selects one configured API key per request", async () => {
+  const authorizationHeaders = [];
+  const client = new JevClient({
+    random: () => 0.75,
+    fetchImpl: async (_url, options) => {
+      authorizationHeaders.push(options.headers.authorization);
+      return {
+        ok: true,
+        async json() {
+          return { tier: "simple" };
+        }
+      };
+    }
+  });
+
+  await client.classify({}, {
+    baseUrl: "https://api.typesafe.ai/v1/systemone",
+    apiKeys: ["key-a", "key-b", "key-c", "key-d"],
+    model: "jev-latest"
+  });
+
+  assert.deepEqual(authorizationHeaders, ["Bearer key-d"]);
+});
+
 test("JEV client resolves base URLs correctly", () => {
   assert.equal(resolveEndpoint("https://api.typesafe.ai/v1/systemone").url, "https://api.typesafe.ai/v1/systemone");
   assert.equal(resolveEndpoint("https://api.typesafe.ai/v1/systemone/").url, "https://api.typesafe.ai/v1/systemone");

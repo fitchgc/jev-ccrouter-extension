@@ -3,6 +3,7 @@ export const DEFAULT_CONFIG = Object.freeze({
   jev: {
     baseUrl: "",
     apiKey: "",
+    apiKeys: [],
     model: "",
     timeoutMs: 8000
   },
@@ -24,10 +25,27 @@ export const DEFAULT_CONFIG = Object.freeze({
 const TIER_NAMES = ["simple", "normal", "complex", "extreme"];
 
 export function mergeConfig(value = {}) {
+  const jevValue = value.jev ?? {};
+  const configuredKeys = Array.isArray(jevValue.apiKeys)
+    ? jevValue.apiKeys
+    : [jevValue.apiKey];
+  const apiKeys = [...new Set(
+    configuredKeys
+      .filter((key) => typeof key === "string")
+      .map((key) => key.trim())
+      .filter(Boolean)
+  )];
+
   return {
     ...DEFAULT_CONFIG,
     ...value,
-    jev: { ...DEFAULT_CONFIG.jev, ...(value.jev ?? {}) },
+    jev: {
+      ...DEFAULT_CONFIG.jev,
+      ...jevValue,
+      apiKeys,
+      // Keep the legacy field populated for older callers and stored configs.
+      apiKey: jevValue.apiKey || apiKeys[0] || ""
+    },
     tiers: { ...DEFAULT_CONFIG.tiers, ...(value.tiers ?? {}) },
     fallback: { ...DEFAULT_CONFIG.fallback, ...(value.fallback ?? {}) },
     routing: { ...DEFAULT_CONFIG.routing, ...(value.routing ?? {}) }
@@ -42,7 +60,7 @@ export function validateConfig(value, allowedModels = []) {
   }
   if (config.enabled) {
     if (!config.jev.baseUrl) errors.push("JEV baseUrl is required");
-    if (!config.jev.apiKey) errors.push("JEV API key is required");
+    if (config.jev.apiKeys.length === 0) errors.push("At least one JEV API key is required");
     if (!config.jev.model) errors.push("JEV model is required");
     if (!Number.isFinite(config.jev.timeoutMs) || config.jev.timeoutMs < 500) {
       errors.push("JEV timeoutMs must be at least 500");

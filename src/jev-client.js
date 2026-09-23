@@ -35,14 +35,19 @@ export function resolveEndpoint(baseUrl) {
 }
 
 export class JevClient {
-  constructor({ fetchImpl = globalThis.fetch, logger = console } = {}) {
+  constructor({ fetchImpl = globalThis.fetch, logger = console, random = Math.random } = {}) {
     this.fetch = fetchImpl;
     this.logger = logger;
+    this.random = random;
   }
 
   async classify(summary, options) {
-    const { baseUrl, apiKey, model, timeoutMs = 8000 } = options;
-    if (!baseUrl || !apiKey || !model) throw new JevError("JEV is not configured");
+    const { baseUrl, model, timeoutMs = 8000 } = options;
+    const apiKeys = Array.isArray(options.apiKeys)
+      ? options.apiKeys.filter((key) => typeof key === "string" && key.trim())
+      : [options.apiKey].filter((key) => typeof key === "string" && key.trim());
+    if (!baseUrl || apiKeys.length === 0 || !model) throw new JevError("JEV is not configured");
+    const apiKey = apiKeys[Math.floor(this.random() * apiKeys.length)] ?? apiKeys[0];
 
     const { url, protocol } = resolveEndpoint(baseUrl);
     const controller = new AbortController();

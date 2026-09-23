@@ -266,6 +266,7 @@ export function createExtension({ jevClient, logger = console } = {}) {
               {
                 baseUrl: body.baseUrl,
                 apiKey: body.apiKey,
+                apiKeys: body.apiKeys,
                 model: body.model,
                 timeoutMs: body.timeoutMs || 8000
               }
